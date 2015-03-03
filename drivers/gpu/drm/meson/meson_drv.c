@@ -42,6 +42,9 @@
 #include <mach/irqs.h>
 #include <linux/amlogic/vout/vout_notify.h>
 
+#include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+
 /* XXX: Move this to a better location. */
 #include "../../../amlogic/gpu/ump/include/ump/ump_kernel_interface_ref_drv.h"
 
@@ -498,7 +501,12 @@ static const struct drm_crtc_funcs meson_crtc_funcs = {
 
 static void meson_crtc_dpms(struct drm_crtc *crtc, int mode)
 {
-	/* TODO: Implement DPMS */
+	hdmitx_dev_t *hdmitx_device = get_hdmitx_device();
+
+	if (mode == DRM_MODE_DPMS_OFF)
+		hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
+	else
+		hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_ENABLE);
 }
 
 static void meson_crtc_prepare(struct drm_crtc *crtc)
@@ -570,6 +578,11 @@ static void meson_crtc_atomic_flush(struct drm_crtc *crtc)
 	}
 }
 
+void meson_crtc_disable(struct drm_crtc *crtc)
+{
+	/* HACK: to avoid the monitor being turned off at boot */
+}
+
 static const struct drm_crtc_helper_funcs meson_crtc_helper_funcs = {
 	.dpms           = meson_crtc_dpms,
 	.prepare        = meson_crtc_prepare,
@@ -581,6 +594,7 @@ static const struct drm_crtc_helper_funcs meson_crtc_helper_funcs = {
 	.load_lut       = meson_crtc_load_lut,
 	.atomic_check   = meson_crtc_atomic_check,
 	.atomic_flush   = meson_crtc_atomic_flush,
+	.disable	= meson_crtc_disable,
 };
 
 /* Pick two canvases in the "user canvas" space that aren't
